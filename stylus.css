@@ -1,0 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #0284c7;
+        }
+
+        #canvas-webgl {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+            display: block;
+        }
+
+        /* Glassmorphism exatamente ajustado para destacar sobre a cena vívida */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.22);
+            backdrop-filter: blur(24px) saturate(200%);
+            -webkit-backdrop-filter: blur(24px) saturate(200%);
+            border: 1.5px solid rgba(255, 255, 255, 0.75);
+            box-shadow: 0 30px 60px -12px rgba(0, 50, 90, 0.35),
+                        0 0 30px rgba(255, 255, 255, 0.4);
+        }
+
+        .glass-button {
+            background: rgba(255, 255, 255, 0.35);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .glass-button:hover {
+            background: rgba(255, 255, 255, 0.7);
+            border-color: rgba(255, 255, 255, 1);
+            transform: translateY(-4px) scale(1.03);
+            box-shadow: 0 12px 24px rgba(0, 80, 140, 0.3);
+        }
+
+        .avatar-shadow {
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.9),
+                        0 10px 25px rgba(0, 60, 110, 0.35);
+        }
+
+        /* Camada suave de brilho solar no viewport */
+        .sun-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 2;
+            background: radial-gradient(circle at 62% 22%, rgba(255, 245, 200, 0.25) 0%, rgba(255, 255, 255, 0) 55%);
+        }

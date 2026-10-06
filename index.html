@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hugo Vinicius - Oceano Realista 3D</title>
+    <!-- Tailwind CSS CDN -->
+     <link rel="stylesheet" href="stylus.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+
+</head>
+<body class="flex items-center justify-center min-h-screen relative">
+
+    <!-- Overlays visuais -->
+    <div class="sun-overlay"></div>
+
+    <!-- Canvas principal do Three.js WebGL -->
+    <canvas id="canvas-webgl"></canvas>
+
+    <main class="relative z-10 w-full max-w-md px-4 sm:px-6 my-auto">
+        <div class="glass-card rounded-3xl p-6 sm:p-8 text-center text-slate-900 transform transition-all duration-500 hover:scale-[1.015]">
+            
+            <!-- Foto de Perfil -->
+            <div class="relative w-28 h-28 mx-auto mb-5">
+                <img src="imagens/Hugo no Einstein.jpg" 
+                     onerror="this.src='https://placehold.co/200x200/0284c7/ffffff?text=HV'"
+                     alt="Foto de perfil de Hugo Vinicius" 
+                     class="w-full h-full object-cover rounded-full border-4 border-white avatar-shadow">
+                <span class="absolute bottom-1 right-1 w-4 h-4 bg-emerald-400 border-2 border-white rounded-full shadow-md" title="Disponível para freelancers"></span>
+            </div>
+
+            <!-- Informações do perfil -->
+            <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 drop-shadow-sm">
+                Hugo Vinicius Ramos Simões
+            </h1>
+            
+            <p class="text-sky-950 text-xs sm:text-sm font-bold tracking-widest uppercase mt-1.5 mb-4">
+                <i class="fa-solid fa-code text-xs mr-1 text-amber-600"></i> Desenvolvedor Front-end
+            </p>
+
+            <p class="text-slate-900 text-xs sm:text-sm leading-relaxed mb-4 font-semibold drop-shadow-sm">
+                Apaixonado por interfaces limpas e código organizado.<br class="hidden sm:inline">
+                1 ano de experiência criando sites e landing pages para clientes freelance.
+            </p>
+
+            <div class="inline-block px-4 py-1.5 bg-white/60 border border-white/90 rounded-full text-xs font-bold text-slate-900 mb-6 shadow-sm">
+                ☀️ "Transformando ideias em interfaces digitais"
+            </div>
+
+            <!-- Links sociais -->
+            <ul class="flex items-center justify-center gap-3 sm:gap-4 pt-4 border-t border-white/60">
+                <li class="flex-1">
+                    <a href="https://github.com/Quakesky?tab=projects" target="_blank" 
+                       class="glass-button flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-extrabold text-slate-900">
+                        <i class="fa-brands fa-github text-base"></i>
+                        <span>GitHub</span>
+                    </a>
+                </li>
+                <li class="flex-1">
+                    <a href="https://www.linkedin.com/feed/" target="_blank" 
+                       class="glass-button flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-extrabold text-slate-900">
+                        <i class="fa-brands fa-linkedin text-base text-sky-700"></i>
+                        <span>LinkedIn</span>
+                    </a>
+                </li>
+                <li class="flex-1">
+                    <a href="https://mail.google.com/mail/u/0/#inbox" target="_blank" 
+                       class="glass-button flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-extrabold text-slate-900">
+                        <i class="fa-solid fa-envelope text-base text-rose-600"></i>
+                        <span>E-mail</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </main>
+
+    <!-- Import do Three.js e extensões para Água e Céu volumétrico -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/objects/Water.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/objects/Sky.js"></script>
+
+    <script>
+        let scene, camera, renderer, water, sky, sunLight;
+        let clouds = [], birds = [];
+        let mouseX = 0, mouseY = 0;
+        let targetCameraX = 0, targetCameraY = 25;
+
+        const clock = new THREE.Clock();
+
+        function initScene() {
+            const canvas = document.getElementById('canvas-webgl');
+
+            // 1. Cena
+            scene = new THREE.Scene();
+
+            // 2. Câmera com ângulo imersivo do nível do mar
+            camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 1, 20000);
+            camera.position.set(0, 24, 115);
+
+            // 3. WebGL Renderer
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: false });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.25; // Exposição elevada para imitar o tom vívido da foto
+
+            // 4. Sky Shader com tonalidades idênticas às da imagem
+            sky = new THREE.Sky();
+            sky.scale.setScalar(10000);
+            scene.add(sky);
+
+            const skyUniforms = sky.material.uniforms;
+            skyUniforms['turbidity'].value = 1.5;        // Atmosfera muito limpa
+            skyUniforms['rayleigh'].value = 1.4;         // Azul ciano radiante
+            skyUniforms['mieCoefficient'].value = 0.004;
+            skyUniforms['mieDirectionalG'].value = 0.85;
+
+            const sunPosition = new THREE.Vector3();
+            // Posição levemente à direita e alta no céu para formar o caminho de luz refletido na foto
+            const elevation = 30; 
+            const azimuth = 172;
+            const phi = THREE.MathUtils.degToRad(90 - elevation);
+            const theta = THREE.MathUtils.degToRad(azimuth);
+
+            sunPosition.setFromSphericalCoords(10000, phi, theta);
+            sky.material.uniforms['sunPosition'].value.copy(sunPosition);
+
+            // Mesh 3D do Sol Dourado Brilhante
+            const sunGroup = new THREE.Group();
+            
+            const sunCoreGeo = new THREE.SphereGeometry(60, 32, 32);
+            const sunCoreMat = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false });
+            const sunCore = new THREE.Mesh(sunCoreGeo, sunCoreMat);
+            sunGroup.add(sunCore);
+
+            const sunGlowGeo = new THREE.SphereGeometry(150, 32, 32);
+            const sunGlowMat = new THREE.MeshBasicMaterial({
+                color: 0xffd040,
+                transparent: true,
+                opacity: 0.5,
+                side: THREE.BackSide,
+                fog: false
+            });
+            const sunGlow = new THREE.Mesh(sunGlowGeo, sunGlowMat);
+            sunGroup.add(sunGlow);
+
+            const sunOuterGeo = new THREE.SphereGeometry(300, 32, 32);
+            const sunOuterMat = new THREE.MeshBasicMaterial({
+                color: 0xffaa00,
+                transparent: true,
+                opacity: 0.22,
+                side: THREE.BackSide,
+                fog: false
+            });
+            const sunOuter = new THREE.Mesh(sunOuterGeo, sunOuterMat);
+            sunGroup.add(sunOuter);
+
+            sunGroup.position.copy(sunPosition);
+            scene.add(sunGroup);
+
+            // Luz direcional do sol gerando o espelhamento reluzente
+            sunLight = new THREE.DirectionalLight(0xfff5d0, 3.2);
+            sunLight.position.copy(sunPosition);
+            scene.add(sunLight);
+
+            const ambientLight = new THREE.AmbientLight(0x00c8ff, 1.1);
+            scene.add(ambientLight);
+
+            // 5. Oceano Turquesa Cristalino (Normal Maps + Specular Reflection)
+            const waterGeometry = new THREE.PlaneGeometry(10000, 10000);
+            const textureLoader = new THREE.TextureLoader();
+            const waterNormals = textureLoader.load(
+                'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/waternormals.jpg',
+                function (texture) {
+                    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+                }
+            );
+
+            water = new THREE.Water(waterGeometry, {
+                textureWidth: 1024,
+                textureHeight: 1024,
+                waterNormals: waterNormals,
+                sunDirection: sunPosition.clone().normalize(),
+                sunColor: 0xfff3bb,   // Cor dourada reluzente do "sun glint" refletido na água
+                waterColor: 0x0088a8, // Verde-turquesa profundo e vibrante exatamente como na foto
+                distortionScale: 4.2,
+                fog: scene.fog !== undefined
+            });
+            water.rotation.x = -Math.PI / 2;
+            scene.add(water);
+
+            // 6. Nuvens Cumulus Flutuantes
+            createCloudFormations();
+
+            // 7. Bando de Gaivotas idêntico ao da foto de referência
+            createSeagullFlock();
+
+            // Event Listeners
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('mousemove', onMouseMove);
+
+            animate();
+        }
+
+        // Criador de Nuvens Cumulus volumétricas
+        function createCloudFormations() {
+            const cloudGeo = new THREE.DodecahedronGeometry(20, 1);
+            const cloudMat = new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                roughness: 0.2,
+                transparent: true,
+                opacity: 0.88,
+                emissive: 0xffffff,
+                emissiveIntensity: 0.15
+            });
+
+            for (let i = 0; i < 26; i++) {
+                const cloudGroup = new THREE.Group();
+                const numPuffs = 8 + Math.floor(Math.random() * 6);
+
+                for (let j = 0; j < numPuffs; j++) {
+                    const mesh = new THREE.Mesh(cloudGeo, cloudMat);
+                    mesh.position.set(
+                        (Math.random() - 0.5) * 60,
+                        (Math.random() - 0.5) * 16,
+                        (Math.random() - 0.5) * 32
+                    );
+                    mesh.scale.set(
+                        Math.random() * 0.9 + 0.6,
+                        Math.random() * 0.5 + 0.4,
+                        Math.random() * 0.9 + 0.6
+                    );
+                    cloudGroup.add(mesh);
+                }
+
+                cloudGroup.position.set(
+                    (Math.random() - 0.5) * 2000,
+                    Math.random() * 80 + 70,
+                    (Math.random() - 0.5) * 1200 - 100
+                );
+
+                scene.add(cloudGroup);
+                clouds.push(cloudGroup);
+            }
+        }
+
+        // Bando de Gaivotas Voando em direções realistas
+        function createSeagull() {
+            const birdGroup = new THREE.Group();
+            const wingMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+            const bodyMat = new THREE.MeshBasicMaterial({ color: 0xe6e6e6 });
+
+            // Corpo
+            const bodyGeo = new THREE.ConeGeometry(0.8, 6, 4);
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.rotation.x = Math.PI / 2;
+            birdGroup.add(body);
+
+            // Asa Esquerda
+            const leftWingGeo = new THREE.BufferGeometry();
+            const leftVertices = new Float32Array([
+                0, 0, 0,
+                -9, 3, -1.5,
+                -3.5, 0, -5
+            ]);
+            leftWingGeo.setAttribute('position', new THREE.BufferAttribute(leftVertices, 3));
+            const leftWing = new THREE.Mesh(leftWingGeo, wingMat);
+
+            // Asa Direita
+            const rightWingGeo = new THREE.BufferGeometry();
+            const rightVertices = new Float32Array([
+                0, 0, 0,
+                9, 3, -1.5,
+                3.5, 0, -5
+            ]);
+            rightWingGeo.setAttribute('position', new THREE.BufferAttribute(rightVertices, 3));
+            const rightWing = new THREE.Mesh(rightWingGeo, wingMat);
+
+            birdGroup.add(leftWing);
+            birdGroup.add(rightWing);
+
+            birdGroup.scale.set(0.65, 0.65, 0.65);
+
+            return {
+                mesh: birdGroup,
+                leftWing: leftWing,
+                rightWing: rightWing,
+                speed: Math.random() * 1.1 + 0.7,
+                wingSpeed: Math.random() * 7 + 8,
+                offset: Math.random() * Math.PI * 2,
+                yPitch: (Math.random() - 0.5) * 0.1
+            };
+        }
+
+        function createSeagullFlock() {
+            for (let i = 0; i < 24; i++) {
+                const bird = createSeagull();
+                
+                // Distribuição espalhada simulando a revoada da fotografia
+                bird.mesh.position.set(
+                    (Math.random() - 0.5) * 550,
+                    Math.random() * 65 + 25,
+                    (Math.random() - 0.5) * 400 - 40
+                );
+                
+                // Pequena rotação orgânica de inclinação
+                bird.mesh.rotation.y = Math.PI / 6 + (Math.random() - 0.5) * 0.4;
+                bird.mesh.rotation.z = (Math.random() - 0.5) * 0.2;
+
+                scene.add(bird.mesh);
+                birds.push(bird);
+            }
+        }
+
+        function onMouseMove(event) {
+            mouseX = (event.clientX / window.innerWidth - 0.5) * 2;
+            mouseY = (event.clientY / window.innerHeight - 0.5) * 2;
+
+            targetCameraX = mouseX * 20;
+            targetCameraY = 24 - mouseY * 10;
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const delta = clock.getDelta();
+            const time = clock.getElapsedTime();
+
+            // 1. Animação das Ondas Físicas e Refração da Água
+            water.material.uniforms['time'].value += delta * 1.25;
+
+            // 2. Movimento suave das Nuvens no Céu
+            clouds.forEach(cloud => {
+                cloud.position.x += delta * 10;
+                if (cloud.position.x > 1000) cloud.position.x = -1000;
+            });
+
+            // 3. Animação Orgânica do Voo e Batimento de Asas das Gaivotas
+            birds.forEach(bird => {
+                bird.mesh.position.x += bird.speed;
+                bird.mesh.position.y += Math.sin(time * 2 + bird.offset) * 0.12;
+                bird.mesh.position.z += Math.sin(time * 1.2 + bird.offset) * 0.25;
+
+                const wingAngle = Math.sin(time * bird.wingSpeed + bird.offset) * 0.6;
+                bird.leftWing.rotation.z = wingAngle;
+                bird.rightWing.rotation.z = -wingAngle;
+
+                // Recicla a posição para manter a revoada infinita
+                if (bird.mesh.position.x > 380) {
+                    bird.mesh.position.x = -380;
+                    bird.mesh.position.z = (Math.random() - 0.5) * 400 - 40;
+                }
+            });
+
+            // 4. Parallax Suave Acompanhando o Cursor do Mouse
+            camera.position.x += (targetCameraX - camera.position.x) * 0.04;
+            camera.position.y += (targetCameraY - camera.position.y) * 0.04;
+            camera.lookAt(0, 10, -100);
+
+            renderer.render(scene, camera);
+        }
+
+        window.onload = initScene;
+    </script>
+    
+</body>
+</html>
